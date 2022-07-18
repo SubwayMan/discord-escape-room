@@ -18,6 +18,7 @@ class Setup(discord.Cog):
         self.mongo_client.EscapeRoom.production.insert_one({
             "guild_id": ctx.guild.id,
             "category_id": category.id,
+            "role_id": role.id,
             "rooms": [],
             "room_count": 0,
         })
@@ -37,6 +38,8 @@ class Setup(discord.Cog):
         if value:
             category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
             await category.delete()
+            role = discord.utils.get(ctx.guild.roles, id=value["role_id"])
+            await role.delete()
 
         self.mongo_client.EscapeRoom.production.delete_one({"guild_id": ctx.guild_id})
 
