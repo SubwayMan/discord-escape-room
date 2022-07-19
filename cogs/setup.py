@@ -41,6 +41,10 @@ class Setup(discord.Cog):
 
     @discord.slash_command(name="createroom", description="Add a room to the escape room. Command only available for administrators.")
     async def create_room(self, ctx: discord.ApplicationContext):
+        if not self.check_validity(ctx.guild):
+            await ctx.respond("This server does not contain a valid escape room.")
+            return
+
         await ctx.respond("Creating room.")
 
     @discord.slash_command(name="reset", description="Clears an escape room and all its components. Command only available for administrators.")
@@ -60,4 +64,11 @@ class Setup(discord.Cog):
         self.mongo_client.EscapeRoom.production.delete_one({"guild_id": ctx.guild_id})
 
         await ctx.respond("Destroying room.")
-    
+
+    def check_validity(self, guild: discord.Guild):
+        """ Checks if a guild is registered in the database. """
+        guild_db = self.mongo_client.EscapeRoom.production.find_one({"guild_id": guild.id})
+        return bool(guild_db)
+
+
+
