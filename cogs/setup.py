@@ -11,16 +11,27 @@ class Setup(discord.Cog):
     @discord.slash_command(name="initialize", description="Setup the Escape Room framework. Command only available for administrators.")
     async def initialize(self, ctx: discord.ApplicationContext):
         guild = ctx.guild
-        role = await guild.create_role(name="Escapist")
+        victory_role = await guild.create_role(name="Escapist")
+        role = await guild.create_role(name="Escape Room Participant")
         perms = discord.PermissionOverwrite()
         category = await guild.create_category("Escape Room", overwrites={role: perms})
+        channel = await category.create_text_channel("Room-1")
+
 
         self.mongo_client.EscapeRoom.production.insert_one({
             "guild_id": ctx.guild.id,
             "category_id": category.id,
-            "role_id": role.id,
-            "rooms": [],
-            "room_count": 0,
+            "role_id": victory_role.id,
+            "rooms": [
+                {
+                    "channel_id": channel.id,
+                    "role_id": role.id,
+                    "answer": "Bongobong",
+                    "index": 0
+                }
+
+            ],
+            "room_count": 1,
         })
         await ctx.respond("Running setup.")
 
@@ -36,10 +47,15 @@ class Setup(discord.Cog):
     async def room_purge(self, ctx: discord.ApplicationContext):
         value = self.mongo_client.EscapeRoom.production.find_one({"guild_id": ctx.guild_id})
         if value:
-            category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
-            await category.delete()
             role = discord.utils.get(ctx.guild.roles, id=value["role_id"])
             await role.delete()
+            for room in value["rooms"]:
+                role = discord.utils.get(ctx.guild.roles, id=room["role_id"])
+                await role.delete()
+                channel = discord.utils.get(ctx.guild.channels, id=room["channel_id"])
+                await channel.delete()
+            category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
+            await category.delete()
 
         self.mongo_client.EscapeRoom.production.delete_one({"guild_id": ctx.guild_id})
 
