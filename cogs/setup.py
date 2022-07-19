@@ -45,6 +45,28 @@ class Setup(discord.Cog):
             await ctx.respond("This server does not contain a valid escape room.")
             return
 
+        guild_db = self.mongo_client.EscapeRoom.production
+        guild_data = guild_db.find_one({"guild_id": ctx.guild_id})
+
+        new_role = await ctx.guild.create_role(name=f"Room-{guild_data['room_count']+1}")
+        categories = discord.utils.get(ctx.guild.categories, id=guild_data["category_id"]) 
+        new_channel = await categories.create_text_channel(f"Room-{guild_data['room_count']+1}")
+
+        rooms = guild_data["rooms"]
+        rooms.append(
+            {
+                "channel_id": new_channel.id,
+                "role_id": new_role.id,
+                "answer": "Bongobong",
+                "index": guild_data["room_count"]
+            }
+        )
+
+        query = { "guild_id": guild_data["guild_id"] }
+        guild_db.update_one(query, {"$set": {"rooms": rooms} })
+        guild_db.update_one(query, {"$set": {"room_count": guild_data["room_count"]+1 } })
+
+
         await ctx.respond("Creating room.")
 
     @discord.slash_command(name="reset", description="Clears an escape room and all its components. Command only available for administrators.")
@@ -65,10 +87,18 @@ class Setup(discord.Cog):
 
         await ctx.respond("Destroying room.")
 
-    def check_validity(self, guild: discord.Guild):
+    def check_validity(self, guild: discord.Guild) -> bool:
         """ Checks if a guild is registered in the database. """
         guild_db = self.mongo_client.EscapeRoom.production.find_one({"guild_id": guild.id})
         return bool(guild_db)
 
+    def channel_validity(self, channel: discord.TextChannel) -> bool:
+        """Checks if a text channel is managed by the bot."""
+        guild_db = self.mongo_client.EscapeRoom.production.find_one({"guild_id": guild.id})
+        # assumes that guild validity has already been checked
+        channels = []
+        for room in guild_db["rooms"]:
+            channels.append(room["channel_id"])
+        return channel.id in channels
 
 
