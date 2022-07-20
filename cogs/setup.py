@@ -5,7 +5,7 @@ import pymongo
 
 
 class Setup(discord.Cog):
-    def __init__(self, bot, mongo_client: pymongo.MongoClient):
+    def __init__(self, bot: discord.Bot, mongo_client: pymongo.MongoClient):
         self.bot = bot
         self._last_member = None
         self.mongo_client = mongo_client
@@ -91,7 +91,7 @@ class Setup(discord.Cog):
         guild_db.update_one(query, {"$set": {"room_count": guild_data["room_count"]+1 } })
 
 
-        await ctx.respond("Creating room.")
+        await ctx.send_response("Creating room.", ephemeral=True)
 
     @discord.slash_command(
         name="reset", 

@@ -23,7 +23,24 @@ class Game(discord.Cog):
     )
 
     async def answer(self, ctx, answer: str):
-        await ctx.respond("idk if that's right lol")
+        db = self.mongo_client.EscapeRoom.production
+        guild_db = db.find_one({"guild_id": ctx.guild.id})
+        if not guild_db:
+            await ctx.respond("Not in a game room.")
+
+        room = None
+        for r in guild_db["rooms"]:
+            if r["channel_id"] == ctx.channel_id:
+                room = r
+                break
+
+        if not room:
+            await ctx.respond("Not in a game room.")
+
+        if answer == room["answer"]:
+            await ctx.send_response("Correct!", ephemeral=True)
+        else:
+            await ctx.send_response("idk if that's right lol", ephemeral=True)
 
 
 
