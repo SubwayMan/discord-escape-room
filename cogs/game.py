@@ -36,11 +36,18 @@ class Game(discord.Cog):
 
         if not room:
             await ctx.respond("Not in a game room.")
+            return
 
         if answer == room["answer"]:
-            await ctx.send_response("Correct!", ephemeral=True)
+            await ctx.send_response("A door slowly opens...", ephemeral=True)
+            new_pos = room["index"] + 1
+            if new_pos >= guild_db["room_count"]:
+                await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, id=guild_db["victory_role"]))
+            else:
+                next_room = guild_db["rooms"][new_pos]
+                await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, id=next_room["role_id"]))
         else:
-            await ctx.send_response("idk if that's right lol", ephemeral=True)
+            await ctx.send_response("Nothing happened.", ephemeral=True)
 
 
 

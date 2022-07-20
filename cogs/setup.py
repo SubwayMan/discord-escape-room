@@ -29,18 +29,21 @@ class Setup(discord.Cog):
         category = await guild.create_category("Escape Room", overwrites = {
             bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
             ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            role1: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
-        })
-        channel = await category.create_text_channel("Room-1", overwrites = {
-            ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             role: discord.PermissionOverwrite(view_channel=True, send_messages=False),
+        })
+
+        channel = await category.create_text_channel("Room-1", overwrites = {
+            bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            role1: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
         })
 
 
         self.mongo_client.EscapeRoom.production.insert_one({
             "guild_id": ctx.guild.id,
             "category_id": category.id,
-            "role_id": victory_role.id,
+            "role_id": role.id,
+            "victory_role": victory_role.id,
             "rooms": [
                 {
                     "channel_id": channel.id,
@@ -61,7 +64,7 @@ class Setup(discord.Cog):
     )
 
     async def check_health(self, ctx: discord.ApplicationContext):
-        await ctx.respond("Checking health.")
+        await ctx.respond("Checking health.", ephemeral=True)
 
     @discord.slash_command(
         name="createroom", 
@@ -76,10 +79,17 @@ class Setup(discord.Cog):
 
         guild_db = self.mongo_client.EscapeRoom.production
         guild_data = guild_db.find_one({"guild_id": ctx.guild_id})
+        bot_role = discord.utils.find(lambda r: r.is_bot_managed() and 
+            r in ctx.guild.get_member(self.bot.user.id).roles,
+            ctx.guild.roles)
 
         new_role = await ctx.guild.create_role(name=f"Room-{guild_data['room_count']+1}")
         categories = discord.utils.get(ctx.guild.categories, id=guild_data["category_id"]) 
-        new_channel = await categories.create_text_channel(f"Room-{guild_data['room_count']+1}")
+        new_channel = await categories.create_text_channel(f"Room-{guild_data['room_count']+1}", overwrites={
+            bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            new_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
+        })
 
         rooms = guild_data["rooms"]
         rooms.append(
@@ -125,6 +135,12 @@ class Setup(discord.Cog):
         self.mongo_client.EscapeRoom.production.delete_one({"guild_id": ctx.guild_id})
 
         await ctx.send_response("Destroying room.", ephemeral=True)
+    
+    @discord.Cog.listener()
+    async def on_message(self, message):
+        if message.author == self.bot.user:
+            return
+        print(message.content)
 
     def check_validity(self, guild: discord.Guild) -> bool:
         """ Checks if a guild is registered in the database. """
