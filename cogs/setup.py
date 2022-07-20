@@ -20,16 +20,21 @@ class Setup(discord.Cog):
         guild = ctx.guild
         victory_role = await guild.create_role(name="Escapist")
         role = await guild.create_role(name="Escape Room Participant")
+        role1 = await guild.create_role(name="Room-1")
+
         bot_role = discord.utils.find(lambda r: r.is_bot_managed() and 
             r in ctx.guild.get_member(self.bot.user.id).roles,
             ctx.guild.roles)
 
-        category = await guild.create_category("Escape Room", overwrites={
+        category = await guild.create_category("Escape Room", overwrites = {
             bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            role1: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
+        })
+        channel = await category.create_text_channel("Room-1", overwrites = {
             ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             role: discord.PermissionOverwrite(view_channel=True, send_messages=False),
         })
-        channel = await category.create_text_channel("Room-1")
 
 
         self.mongo_client.EscapeRoom.production.insert_one({
@@ -39,7 +44,7 @@ class Setup(discord.Cog):
             "rooms": [
                 {
                     "channel_id": channel.id,
-                    "role_id": role.id,
+                    "role_id": role1.id,
                     "answer": "Bongobong",
                     "index": 0
                 }
@@ -47,7 +52,7 @@ class Setup(discord.Cog):
             ],
             "room_count": 1,
         })
-        await ctx.respond("Running setup.")
+        await ctx.respond("Running setup.", ephemeral=True)
 
     @discord.slash_command(
         name="checkhealth", 
@@ -101,22 +106,25 @@ class Setup(discord.Cog):
 
     async def room_purge(self, ctx: discord.ApplicationContext):
         value = self.mongo_client.EscapeRoom.production.find_one({"guild_id": ctx.guild_id})
-        if value:
-            for room in value["rooms"]:
-                channel = discord.utils.get(ctx.guild.channels, id=room["channel_id"])
-                await self.delete_channel(channel)
-                role = discord.utils.get(ctx.guild.roles, id=room["role_id"])
-                await self.delete_role(role)
+        if not value:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
 
-            role = discord.utils.get(ctx.guild.roles, id=value["role_id"])
+        for room in value["rooms"]:
+            channel = discord.utils.get(ctx.guild.channels, id=room["channel_id"])
+            await self.delete_channel(channel)
+            role = discord.utils.get(ctx.guild.roles, id=room["role_id"])
             await self.delete_role(role)
 
-            category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
-            await self.delete_category(category)
+        role = discord.utils.get(ctx.guild.roles, id=value["role_id"])
+        await self.delete_role(role)
+
+        category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
+        await self.delete_category(category)
 
         self.mongo_client.EscapeRoom.production.delete_one({"guild_id": ctx.guild_id})
 
-        await ctx.respond("Destroying room.")
+        await ctx.send_response("Destroying room.", ephemeral=True)
 
     def check_validity(self, guild: discord.Guild) -> bool:
         """ Checks if a guild is registered in the database. """
@@ -143,5 +151,17 @@ class Setup(discord.Cog):
     async def delete_category(self, category: discord.CategoryChannel):
         if category:
             await category.delete()
+    
 
-
+    @discord.slash_command(
+        name="purgeleftovers", 
+        description="Command used to clean leftover roles from bot testing.",
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    async def leftovers(self, ctx):
+        pc = 0
+        for role in ctx.guild.roles:
+            if role.name in ["Escapist", "Escape Room Participant"] or role.name.startswith("Room"):
+                await role.delete()
+                pc += 1
+        await ctx.send_response(f"{pc} roles deleted.", ephemeral=True)
