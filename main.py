@@ -4,7 +4,7 @@ import pymongo
 
 
 from cogs import Setup, RoomBuilder, Game
-from rooms import Room
+from rooms import *
 from dotenv import load_dotenv
 
 class PersistentView(discord.ui.View):
@@ -35,8 +35,7 @@ bot = discord.Bot(intents=ints)
 
 @bot.listen()
 async def on_ready():
-    bot.add_view(PersistentView())
-    bot.add_view(Room())
+    bot.add_view(AnswerModalView())
 
 bot.add_cog(Setup(bot, mongo_client))
 bot.add_cog(Game(bot, mongo_client))
@@ -48,7 +47,8 @@ async def prepare(ctx):
 
 @bot.command()
 async def modaltest(ctx):
-    await ctx.respond("test", view=Room(ctx.user.id), ephemeral=True)
+    await ctx.channel.send(view=AnswerModalView(ctx.guild.get_role(999191084611674122)))
+    await ctx.respond("View successfully created", ephemeral=True)
 
 bot.run(os.getenv("TOKEN"))
 

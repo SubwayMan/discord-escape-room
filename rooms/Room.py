@@ -1,29 +1,51 @@
 import discord 
 import pymongo
 
-class Room(discord.ui.View):
+class AnswerModalView(discord.ui.View):
     """ Base class to represent a section of an escape room."""
 
-    def __init__(self, user_id=None):
+    def __init__(self, reward: discord.Role=None):
         super().__init__(timeout=None)
-        self.next_room = None # channel id to redirect
-        self.answer = "Placeholder"
-        self.user_id = user_id
+        self.reward = reward
 
     @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Room:Button1")
     async def submit(self, button: discord.ui.Button, interaction: discord.Interaction):
-        modal = discord.ui.Modal(title="Submit Answer")
-        modal.add_item(discord.ui.InputText(label="Answer", placeholder="type answer here..."))
-        modal.callback = self.submit_answer
+        modal = AnswerModal(self.reward)
         await interaction.response.send_modal(modal)
 
-    async def submit_answer(self, interaction: discord.Interaction):
-        data = interaction.data["components"][0]["components"][0]["value"]
 
-        if data == self.answer:
-            await interaction.response.send_message(f"{self.user_id} Correct!", ephemeral=True)
+
+class AnswerModal(discord.ui.Modal):
+    def __init__(self, reward: discord.Role):
+        super().__init__(
+            discord.ui.InputText(
+                label = "Enter Answer",
+                placeholder = "answer here..."
+            ),
+            title = "Enter Answer"
+        )
+        self.reward = reward
+        print(reward)
+        self.answer = "nongnonog"
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.children[0].value == self.answer:
+            try:
+                await interaction.user.add_roles(self.reward)
+                await interaction.response.send_message("Correct answer.", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.response.send_message("Role assignment failed. Contact server administrator.", ephemeral=True)
         else:
-            await interaction.response.send_message("Incorrect!", ephemeral=True)
+            await interaction.response.send_message("Incorrect answer.", ephemeral=True)
+
+
+
+
+
+
+
+
+
 
             
 
