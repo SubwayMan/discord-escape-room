@@ -17,15 +17,21 @@ class AnswerModalView(discord.ui.View):
             return
 
         room = None
-        for r in guild_db["rooms"]:
+        rooms = guild_db["rooms"] 
+        reward = guild_db["victory_role"]
+
+        for i in range(len(rooms)):
+            r = rooms[i]
             if r["channel_id"] == interaction.channel_id:
                 room = r
+                if i < len(rooms)-1:
+                    reward = rooms[i+1]["role_id"]
                 break
         else:
             await interaction.response.send_message("Invalid room. Contact server administrator.", ephemeral=True)
             return
 
-        modal = AnswerModal(room["answer"], interaction.guild.get_role(room["role_id"]))
+        modal = AnswerModal(room["answer"], interaction.guild.get_role(reward))
         await interaction.response.send_modal(modal)
 
 
@@ -40,18 +46,17 @@ class AnswerModal(discord.ui.Modal):
             title = "Enter Answer"
         )
         self.reward = reward
-        print(reward)
         self.answer = answer
 
     async def callback(self, interaction: discord.Interaction):
         if self.children[0].value == self.answer:
             try:
                 await interaction.user.add_roles(self.reward)
-                await interaction.response.send_message("Correct answer.", ephemeral=True)
+                await interaction.response.send_message("A door slowly opens...", ephemeral=True)
             except discord.Forbidden:
                 await interaction.response.send_message("Role assignment failed. Contact server administrator.", ephemeral=True)
         else:
-            await interaction.response.send_message("Incorrect answer.", ephemeral=True)
+            await interaction.response.send_message("But nothing happened.", ephemeral=True)
 
 
 
