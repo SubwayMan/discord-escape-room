@@ -2,30 +2,14 @@ import discord
 import pymongo
 
 
-class PersistentView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Green", style=discord.ButtonStyle.green, custom_id="persistent_view:green")
-    async def green(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_message("This is green.", ephemeral=True)
-
-    @discord.ui.button(label="Red", style=discord.ButtonStyle.red, custom_id="persistent_view:red")
-    async def red(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_message("This is red.", ephemeral=True)
-
-    @discord.ui.button(label="Grey", style=discord.ButtonStyle.grey, custom_id="persistent_view:grey")
-    async def grey(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_message("This is grey.", ephemeral=True)
-
 
 class Game(discord.Cog):
     """This cog is meant for organizing user/player portions of
     the escape room."""
-    def __init__(self, bot: discord.Bot, mongo_client: pymongo.MongoClient):
+    def __init__(self, bot: discord.Bot, db):
         self.bot = bot
         self._last_member = None
-        self.mongo_client = mongo_client
+        self.database = db
 
     @discord.slash_command(
         name = "submit",
@@ -41,7 +25,7 @@ class Game(discord.Cog):
     )
 
     async def answer(self, ctx, answer: str):
-        db = self.mongo_client.EscapeRoom.production
+        db = self.database
         guild_db = db.find_one({"guild_id": ctx.guild.id})
         if not guild_db:
             await ctx.respond("Not in a game room.")
@@ -67,10 +51,6 @@ class Game(discord.Cog):
         else:
             await ctx.send_response("Nothing happened.", ephemeral=True)
     
-    @discord.slash_command(name="butt")
-    async def butt(self, ctx):
-        view = PersistentView()
-        await ctx.send_response("b", view=view)
 
 
 

@@ -1,22 +1,37 @@
 import discord 
-import pymongo
+from config import DATABASE
 
 class AnswerModalView(discord.ui.View):
     """ Base class to represent a section of an escape room."""
 
-    def __init__(self, reward: discord.Role=None):
+    def __init__(self, database):
         super().__init__(timeout=None)
-        self.reward = reward
+        self.database = database
+
 
     @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Room:Button1")
     async def submit(self, button: discord.ui.Button, interaction: discord.Interaction):
-        modal = AnswerModal(self.reward)
+        guild_db = self.database.find_one({"guild_id": interaction.guild_id})
+        if not guild_db:
+            await interaction.response.send_message("No escape room found in server. Contact server administrator.", ephemeral=True)
+            return
+
+        room = None
+        for r in guild_db["rooms"]:
+            if r["channel_id"] == interaction.channel_id:
+                room = r
+                break
+        else:
+            await interaction.response.send_message("Invalid room. Contact server administrator.", ephemeral=True)
+            return
+
+        modal = AnswerModal(room["answer"], interaction.guild.get_role(room["role_id"]))
         await interaction.response.send_modal(modal)
 
 
 
 class AnswerModal(discord.ui.Modal):
-    def __init__(self, reward: discord.Role):
+    def __init__(self, answer:str, reward: discord.Role):
         super().__init__(
             discord.ui.InputText(
                 label = "Enter Answer",
@@ -26,7 +41,7 @@ class AnswerModal(discord.ui.Modal):
         )
         self.reward = reward
         print(reward)
-        self.answer = "nongnonog"
+        self.answer = answer
 
     async def callback(self, interaction: discord.Interaction):
         if self.children[0].value == self.answer:

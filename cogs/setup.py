@@ -5,10 +5,10 @@ import pymongo
 
 
 class Setup(discord.Cog):
-    def __init__(self, bot: discord.Bot, mongo_client: pymongo.MongoClient):
+    def __init__(self, bot: discord.Bot, database: pymongo.MongoClient):
         self.bot = bot
         self._last_member = None
-        self.mongo_client = mongo_client
+        self.database = database
     
     @discord.slash_command(
         name="initialize",
@@ -39,7 +39,7 @@ class Setup(discord.Cog):
         })
 
 
-        self.mongo_client.EscapeRoom.production.insert_one({
+        self.database.insert_one({
             "guild_id": ctx.guild.id,
             "category_id": category.id,
             "role_id": role.id,
@@ -77,7 +77,7 @@ class Setup(discord.Cog):
             await ctx.respond("This server does not contain a valid escape room.")
             return
 
-        guild_db = self.mongo_client.EscapeRoom.production
+        guild_db = self.database
         guild_data = guild_db.find_one({"guild_id": ctx.guild_id})
         bot_role = discord.utils.find(lambda r: r.is_bot_managed() and 
             r in ctx.guild.get_member(self.bot.user.id).roles,
@@ -115,7 +115,7 @@ class Setup(discord.Cog):
     )
 
     async def room_purge(self, ctx: discord.ApplicationContext):
-        value = self.mongo_client.EscapeRoom.production.find_one({"guild_id": ctx.guild_id})
+        value = self.database.find_one({"guild_id": ctx.guild_id})
         if not value:
             await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
             return
@@ -132,24 +132,47 @@ class Setup(discord.Cog):
         category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
         await self.delete_category(category)
 
-        self.mongo_client.EscapeRoom.production.delete_one({"guild_id": ctx.guild_id})
+        self.database.delete_one({"guild_id": ctx.guild_id})
 
         await ctx.send_response("Destroying room.", ephemeral=True)
-    
-    @discord.Cog.listener()
-    async def on_message(self, message):
-        if message.author == self.bot.user:
+
+    @discord.slash_command(
+        name="changeanswer", 
+        description="Changes the answer for a room. Command only available for administrators.",
+        default_member_permissions=discord.Permissions(administrator=True),
+        options = [
+            discord.Option(str, name="answer", description="New room answer", required=True)
+        ]
+    )
+    async def change_answer(self, ctx, answer: str):
+        guild_query = {"guild_id": ctx.guild_id}
+        guild_db = self.database.find_one(guild_query)
+        if not guild_db:
+            await ctx.send_response("No escape room found in this server.", ephemeral=True)
             return
-        print(message.content)
+
+        rooms = guild_db["rooms"]
+        for i in range(len(rooms)):
+            if rooms[i]["channel_id"] == ctx.channel_id:
+                rooms[i]["answer"] = answer
+                break
+        else:
+            await ctx.send_response("No room found in this channel.", ephemeral=True)
+            return
+
+        self.database.update_one(guild_query, {"$set": {"rooms": rooms}})
+        await ctx.send_response(f"Room answer successfully updated to {answer}.", ephemeral=True)
+
+    
 
     def check_validity(self, guild: discord.Guild) -> bool:
         """ Checks if a guild is registered in the database. """
-        guild_db = self.mongo_client.EscapeRoom.production.find_one({"guild_id": guild.id})
+        guild_db = self.database.find_one({"guild_id": guild.id})
         return bool(guild_db)
 
     def channel_validity(self, channel: discord.TextChannel) -> bool:
         """Checks if a text channel is managed by the bot."""
-        guild_db = self.mongo_client.EscapeRoom.production.find_one({"guild_id": guild.id})
+        guild_db = self.database.find_one({"guild_id": guild.id})
         # assumes that guild validity has already been checked
         channels = []
         for room in guild_db["rooms"]:
