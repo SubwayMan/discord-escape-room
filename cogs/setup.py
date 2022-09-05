@@ -17,6 +17,11 @@ class Setup(discord.Cog):
     )
 
     async def initialize(self, ctx: discord.ApplicationContext):
+
+        if self.check_validity(ctx.guild):
+            await ctx.respond("Escape room already initialized in this server.", ephemeral=True)
+            return
+
         guild = ctx.guild
         victory_role = await guild.create_role(name="Escapist")
         role = await guild.create_role(name="Escape Room Participant")
@@ -42,7 +47,6 @@ class Setup(discord.Cog):
         self.database.insert_one({
             "guild_id": ctx.guild.id,
             "category_id": category.id,
-            "role_id": role.id,
             "victory_role": victory_role.id,
             "rooms": [
                 {
