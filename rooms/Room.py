@@ -88,16 +88,23 @@ class GridCode(discord.ui.View):
     def __init__(self, answer:str, reward: discord.Role):
         super().__init__(timeout=None)
         self.data = [[0 for i in range(5)] for j in range(5)]
+        self.buttons = [[None for i in range(5)] for j in range(5)]
+
         for i in range(5):
             for j in range(5):
-                but = discord.ui.Button(style=discord.ButtonStyle.green, label=" ", custom_id=f"{i},{j}")
-                but.callback = self.callback
-                self.add_item(but)
+                self.buttons[i][j] = discord.ui.Button(style=discord.ButtonStyle.green, label=" ", custom_id=f"{i},{j}")
+                self.buttons[i][j].callback = self.callback
+                self.add_item(self.buttons[i][j])
 
     async def callback(self, interaction:discord.Interaction, *args, **kwargs):
         r, c = map(int, interaction.custom_id.split(","))
         self.data[r][c] ^= 1
-        await interaction.response.send_message(f"{r}, {c}", ephemeral=True)
+        if self.data[r][c] == 1:
+            self.buttons[r][c].style = discord.ButtonStyle.red
+        else:
+            self.buttons[r][c].style = discord.ButtonStyle.green
+
+        await interaction.response.edit_message(view=self)
 
 
 
