@@ -89,6 +89,8 @@ class GridCode(discord.ui.View):
         super().__init__(timeout=None)
         self.data = [[0 for i in range(5)] for j in range(5)]
         self.buttons = [[None for i in range(5)] for j in range(5)]
+        self.answer = answer
+        self.reward = reward
 
         for i in range(5):
             for j in range(5):
@@ -104,7 +106,19 @@ class GridCode(discord.ui.View):
         else:
             self.buttons[r][c].style = discord.ButtonStyle.green
 
+        current_state = "".join(("".join(map(str, row)) for row in self.data))
+        if current_state == self.answer:
+            for row in self.buttons:
+                for button in row:
+                    button.disabled = True
+
         await interaction.response.edit_message(view=self)
+        if current_state == self.answer:
+            try:
+                await interaction.user.add_roles(self.reward)
+                await interaction.followup.send("A door slowly opens...", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
 
 
 
