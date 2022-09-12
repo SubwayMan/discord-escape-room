@@ -167,7 +167,14 @@ class Setup(discord.Cog):
         self.database.update_one(guild_query, {"$set": {"rooms": rooms}})
         await ctx.send_response(f"Room answer successfully updated to {answer}.", ephemeral=True)
 
-    
+    @discord.slash_command(
+        name="createmessage", 
+        description="Causes the escape room controller to send a permanent message in a channel.",
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+
+    async def new_message(self, ctx):
+        await ctx.send_modal(MessageModal())
 
     def check_validity(self, guild: discord.Guild) -> bool:
         """ Checks if a guild is registered in the database. """
@@ -208,3 +215,17 @@ class Setup(discord.Cog):
                 await role.delete()
                 pc += 1
         await ctx.send_response(f"{pc} roles deleted.", ephemeral=True)
+
+class MessageModal(discord.ui.Modal):
+
+    def __init__(self):
+        super().__init__(discord.ui.InputText(
+            placeholder="text here...",
+            max_length=1000,
+            label="Body"
+        ), title="Enter message content")
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.channel.send(self.children[0].value)
+        await interaction.response.send_message("Message created.", ephemeral=True)
+
