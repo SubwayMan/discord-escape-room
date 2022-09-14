@@ -21,6 +21,7 @@ bot = discord.Bot(intents=ints)
 async def on_ready():
     bot.add_view(AnswerModalView(config.DATABASE))
     bot.add_view(GridCodeView(config.DATABASE))
+    bot.add_view(PinCodeView(config.DATABASE))
 
 bot.add_cog(Setup(bot, config.DATABASE))
 bot.add_cog(Game(bot, config.DATABASE))
@@ -34,6 +35,11 @@ async def modaltest(ctx):
 @bot.command()
 async def gridtest(ctx):
     await ctx.channel.send(view=GridCodeView(config.DATABASE))
+    await ctx.respond("View successfully created", ephemeral=True)
+
+@bot.command()
+async def pintest(ctx):
+    await ctx.channel.send(view=PinCodeView(config.DATABASE))
     await ctx.respond("View successfully created", ephemeral=True)
 
 @bot.command()

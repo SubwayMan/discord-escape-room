@@ -68,7 +68,7 @@ class AnswerModal(discord.ui.Modal):
 
 
 class GridCodeView(InteractionWrapper):
-    """ Wrapper view to provide 55 grid code interactables."""
+    """ Wrapper view to provide 5x5 grid code interactables."""
 
     @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Button1")
     async def create_interactable(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -98,7 +98,7 @@ class GridCode(discord.ui.View):
                 self.buttons[i][j].callback = self.callback
                 self.add_item(self.buttons[i][j])
 
-    async def callback(self, interaction:discord.Interaction, *args, **kwargs):
+    async def callback(self, interaction:discord.Interaction):
         r, c = map(int, interaction.custom_id.split(","))
         self.data[r][c] ^= 1
         if self.data[r][c] == 1:
@@ -119,6 +119,68 @@ class GridCode(discord.ui.View):
                 await interaction.followup.send("A door slowly opens...", ephemeral=True)
             except discord.Forbidden:
                 await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
+
+
+class PinCodeView(InteractionWrapper):
+    """ Wrapper view to provide 5x5 grid code interactables."""
+
+    @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Button1")
+    async def create_interactable(self, button: discord.ui.Button, interaction: discord.Interaction):
+        params = self.get_params(interaction)
+        if not params:
+             await interaction.response.send_message("Configuration error. Contact server administrator.", ephemeral=True)
+             return
+    
+        answer, role = params
+        if not answer[0].isdigit():
+            await interaction.response.send_message("Room answer is improperly configured. Contact server administrator.", ephemeral=True)
+            return
+
+        gridcode = PinCode(answer, role)
+        await interaction.response.send_message(" ".join("-" * len(answer)), view=gridcode, ephemeral=True)
+
+
+class PinCode(discord.ui.View):
+
+    def __init__(self, answer:str, reward: discord.Role):
+        super().__init__(timeout=None)
+        self.answer = answer
+        self.reward = reward
+        self.value = ""
+        for i in range(1, 10):
+            but = discord.ui.Button(style=discord.ButtonStyle.green, label=str(i), custom_id=str(i), row=(i-1)//3)
+            but.callback = self.callback
+            self.add_item(but)
+
+    async def callback(self, interaction:discord.Interaction):
+        id = interaction.custom_id
+        self.value += id
+        await interaction.response.edit_message(content=" ".join(self.value + "-" * (len(self.answer) - len(self.value))), view=self)
+        if len(self.value) == len(self.answer):
+            if self.value == self.answer:
+                try:
+                    await interaction.user.add_roles(self.reward)
+                    await interaction.followup.send("A door slowly opens...", ephemeral=True)
+                except discord.Forbidden:
+                    await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
+            else:
+                await interaction.edit_original_message(content=" ".join("-" * len(self.answer)), view=self)
+                self.value = ""
+
+
+
+        
+
+
+
+
+
+    
+
+    
+        
+
+        
 
 
 
