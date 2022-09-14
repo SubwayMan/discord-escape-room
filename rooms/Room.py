@@ -147,10 +147,11 @@ class PinCode(discord.ui.View):
         self.answer = answer
         self.reward = reward
         self.value = ""
+        self.buttons = []
         for i in range(1, 10):
-            but = discord.ui.Button(style=discord.ButtonStyle.green, label=str(i), custom_id=str(i), row=(i-1)//3)
-            but.callback = self.callback
-            self.add_item(but)
+            self.buttons.append(discord.ui.Button(style=discord.ButtonStyle.green, label=str(i), custom_id=str(i), row=(i-1)//3))
+            self.buttons[-1].callback = self.callback
+            self.add_item(self.buttons[-1])
 
     async def callback(self, interaction:discord.Interaction):
         id = interaction.custom_id
@@ -158,6 +159,11 @@ class PinCode(discord.ui.View):
         await interaction.response.edit_message(content=" ".join(self.value + "-" * (len(self.answer) - len(self.value))), view=self)
         if len(self.value) == len(self.answer):
             if self.value == self.answer:
+                for but in self.buttons:
+                    but.disabled = True
+
+                await interaction.edit_original_message(content=" ".join(self.value), view=self)
+
                 try:
                     await interaction.user.add_roles(self.reward)
                     await interaction.followup.send("A door slowly opens...", ephemeral=True)
