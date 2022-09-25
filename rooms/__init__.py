@@ -1,1 +1,1 @@
-from .Room import AnswerModalView, GridCodeView, PinCodeView
+from .Room import AnswerModalView, GridCodeView, PinCodeView, Trigger
