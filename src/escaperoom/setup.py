@@ -1,6 +1,5 @@
 import discord
 from discord.ext.commands import has_permissions 
-from .tools import false_perms, true_perms
 import pymongo
 
 

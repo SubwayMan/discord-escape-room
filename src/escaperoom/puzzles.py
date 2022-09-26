@@ -1,10 +1,5 @@
 import discord 
 
-# A dict that maps an id identifying a puzzle with its class
-PUZZLE_IDS = {
-    "1": InteractionWrapper
-}
-
 class Trigger(discord.ui.View):
     """Class that provides publicly visible buttons in channels, as a means to access puzzles
     (which are ephemeral and only visible to the person who activated the trigger."""
@@ -203,6 +198,11 @@ class PinCode(discord.ui.View):
                 self.value = ""
 
 
+
+# A dict that maps an id identifying a puzzle with its class
+PUZZLE_IDS = {
+    "1": InteractionWrapper
+}
 
         
 

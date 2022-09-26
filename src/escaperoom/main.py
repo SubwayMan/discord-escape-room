@@ -1,16 +1,15 @@
 import os
 import discord
 import pymongo
-import config
 
-
-from cogs import Setup, RoomBuilder, Game
-from rooms import *
+from setup import *
+from puzzles import *
 from dotenv import load_dotenv
 
-load_dotenv(".env")
-
-
+load_dotenv("../../.env")
+TOKEN = os.getenv("TOKEN")
+CLIENT = pymongo.MongoClient(os.getenv("MONGO_URL"))
+DATABASE = CLIENT.EscapeRoom.production
 
 ints = discord.Intents.default()
 ints.message_content = True
@@ -19,32 +18,30 @@ bot = discord.Bot(intents=ints)
 
 @bot.listen()
 async def on_ready():
-    bot.add_view(AnswerModalView(config.DATABASE))
-    bot.add_view(GridCodeView(config.DATABASE))
-    bot.add_view(PinCodeView(config.DATABASE))
+    bot.add_view(AnswerModalView(DATABASE))
+    bot.add_view(GridCodeView(DATABASE))
+    bot.add_view(PinCodeView(DATABASE))
 
-bot.add_cog(Setup(bot, config.DATABASE))
-bot.add_cog(Game(bot, config.DATABASE))
-bot.add_cog(RoomBuilder(bot))
+bot.add_cog(Setup(bot, DATABASE))
 
 @bot.command()
 async def modaltest(ctx):
-    await ctx.channel.send(view=AnswerModalView(config.DATABASE))
+    await ctx.channel.send(view=AnswerModalView(DATABASE))
     await ctx.respond("View successfully created", ephemeral=True)
 
 @bot.command()
 async def gridtest(ctx):
-    await ctx.channel.send(view=GridCodeView(config.DATABASE))
+    await ctx.channel.send(view=GridCodeView(DATABASE))
     await ctx.respond("View successfully created", ephemeral=True)
 
 @bot.command()
 async def pintest(ctx):
-    await ctx.channel.send(view=PinCodeView(config.DATABASE))
+    await ctx.channel.send(view=PinCodeView(DATABASE))
     await ctx.respond("View successfully created", ephemeral=True)
 
 @bot.command()
 async def joingame(ctx):
-    guild_db = config.DATABASE.find_one({"guild_id": ctx.guild_id})
+    guild_db = DATABASE.find_one({"guild_id": ctx.guild_id})
     if not guild_db:
         ctx.send_response("No escape room set up in this server.", ephemeral=True)
         return
@@ -55,5 +52,5 @@ async def joingame(ctx):
     
 
 
-bot.run(config.TOKEN)
+bot.run(TOKEN)
 
