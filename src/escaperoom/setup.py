@@ -1,6 +1,7 @@
 import discord
 from discord.ext.commands import has_permissions 
 import pymongo
+from helpers import *
 
 
 class Setup(discord.Cog):
@@ -174,6 +175,19 @@ class Setup(discord.Cog):
 
     async def new_message(self, ctx):
         await ctx.send_modal(MessageModal())
+
+    @discord.slash_command(
+        name="trigger", 
+        description="Creates a permanent, publicly visible \"trigger\" button that allows users to enter puzzle chains.",
+        default_member_permissions=discord.Permissions(administrator=True),
+        options = [
+            discord.Option(str, name="label", description="Label for button", required=True)
+        ]
+    )
+    async def create_trigger(self, ctx, label: str):
+        trigger = Trigger(self.database, label)
+        await ctx.send_response("", view=trigger)
+
 
     def check_validity(self, guild: discord.Guild) -> bool:
         """ Checks if a guild is registered in the database. """

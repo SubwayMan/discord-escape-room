@@ -4,6 +4,7 @@ import pymongo
 
 from setup import *
 from puzzles import *
+from helpers import Trigger
 from dotenv import load_dotenv
 
 load_dotenv("../../.env")
@@ -18,6 +19,7 @@ bot = discord.Bot(intents=ints)
 
 @bot.listen()
 async def on_ready():
+    bot.add_view(Trigger(DATABASE))
     bot.add_view(AnswerModalView(DATABASE))
     bot.add_view(GridCodeView(DATABASE))
     bot.add_view(PinCodeView(DATABASE))
