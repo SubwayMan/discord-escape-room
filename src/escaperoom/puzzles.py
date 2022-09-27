@@ -1,52 +1,13 @@
 import discord 
+import sys, inspect
+from helpers import Puzzle, PUZZLE_NAMEMAP, test
 
-class InteractionWrapper(discord.ui.View):
-    """Class to inherit from that helps with wrapping interactable components."""
-    def __init__(self, database):
-        super().__init__(timeout=None)
-        self.database = database
+            
 
-    def get_params(self, interaction):
-        guild_db = self.database.find_one({"guild_id": interaction.guild_id})
-        if not guild_db:
-            return None
-
-        room = None
-        rooms = guild_db["rooms"] 
-        reward = guild_db["victory_role"]
-
-        for i in range(len(rooms)):
-            r = rooms[i]
-            if r["channel_id"] == interaction.channel_id:
-                room = r
-                if i < len(rooms)-1:
-                    reward = rooms[i+1]["role_id"]
-                break
-        else:
-            return None
-
-        return (room["answer"], interaction.guild.get_role(reward))
-
-class AnswerModalView(InteractionWrapper):
-    """ Base class to represent a section of an escape room."""
-
-    @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Room:Button1")
-    async def submit(self, button: discord.ui.Button, interaction: discord.Interaction):
-        params = self.get_params(interaction)
-        if not params:
-             await interaction.response.send_message("Configuration error. Contact server administrator.", ephemeral=True)
-             return
-    
-        answer, role = params
-
-        modal = AnswerModal(answer, role)
-        await interaction.response.send_modal(modal)
-
-
-
-class AnswerModal(discord.ui.Modal):
-    def __init__(self, answer:str, reward: discord.Role):
-        super().__init__(
+class AnswerModal(Puzzle, discord.ui.Modal):
+    def __init__(self, database, answer:str, reward: discord.Role, next: int):
+        Puzzle.__init__(self, database, answer, reward, next)
+        discord.ui.Modal.__init__(self, 
             discord.ui.InputText(
                 label = "Enter Answer",
                 placeholder = "answer here..."
@@ -67,26 +28,12 @@ class AnswerModal(discord.ui.Modal):
             await interaction.response.send_message("But nothing happened.", ephemeral=True)
 
 
-class GridCodeView(InteractionWrapper):
-    """ Wrapper view to provide 5x5 grid code interactables."""
 
-    @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Button1")
-    async def create_interactable(self, button: discord.ui.Button, interaction: discord.Interaction):
-        params = self.get_params(interaction)
-        if not params:
-             await interaction.response.send_message("Configuration error. Contact server administrator.", ephemeral=True)
-             return
-    
-        answer, role = params
-
-        gridcode = GridCode(answer, role)
-        await interaction.response.send_message(view=gridcode, ephemeral=True)
-
-
-class GridCode(discord.ui.View):
+class GridCode(Puzzle, discord.ui.View):
 
     def __init__(self, answer:str, reward: discord.Role):
-        super().__init__(timeout=None)
+        Puzzle.__init__(self, database, answer, reward, next)
+        discord.ui.View.__init__(self, timeout=None)
         self.data = [[0 for i in range(5)] for j in range(5)]
         self.buttons = [[None for i in range(5)] for j in range(5)]
         self.answer = answer
@@ -121,29 +68,12 @@ class GridCode(discord.ui.View):
                 await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
 
 
-class PinCodeView(InteractionWrapper):
-    """ Wrapper view to provide 5x5 grid code interactables."""
 
-    @discord.ui.button(label="Answer", style=discord.ButtonStyle.green, custom_id=f"Button1")
-    async def create_interactable(self, button: discord.ui.Button, interaction: discord.Interaction):
-        params = self.get_params(interaction)
-        if not params:
-             await interaction.response.send_message("Configuration error. Contact server administrator.", ephemeral=True)
-             return
-    
-        answer, role = params
-        if not answer[0].isdigit():
-            await interaction.response.send_message("Room answer is improperly configured. Contact server administrator.", ephemeral=True)
-            return
-
-        gridcode = PinCode(answer, role)
-        await interaction.response.send_message(" ".join("-" * len(answer)), view=gridcode, ephemeral=True)
-
-
-class PinCode(discord.ui.View):
+class PinCode(Puzzle, discord.ui.View):
 
     def __init__(self, answer:str, reward: discord.Role):
-        super().__init__(timeout=None)
+        Puzzle.__init__(self, database, answer, reward, next)
+        discord.ui.View.__init__(self, timeout=None)
         self.answer = answer
         self.reward = reward
         self.value = ""
@@ -174,36 +104,12 @@ class PinCode(discord.ui.View):
                 self.value = ""
 
 
+for name, obj in inspect.getmembers(sys.modules[__name__]):
+    if inspect.isclass(obj) and obj != Puzzle:
+        PUZZLE_NAMEMAP[name] = obj
 
-# A dict that maps an id identifying a puzzle with its class
-PUZZLE_IDS = {
-    "1": InteractionWrapper
-}
-
-        
-
-
-
-
-
-    
-
-    
-        
+if __name__ == "__main__":
+    test()
 
         
-
-
-
-
-
-
-
-
-
-            
-
-
-
-
 

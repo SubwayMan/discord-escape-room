@@ -1,15 +1,24 @@
 import discord
 import inspect
-import puzzles
 import sys
 
 async def send_puzzle(interaction: discord.Interaction, database, puzzle_id):
     """Sends a puzzle to a channel."""
     guild_db = database.find_one({"guild_id": interaction.guild_id})
     puzzle = guild_db["puzzles"][puzzle_id]
-    puzzle_type = puzzle["type"]
+    if puzzle["type"] not in PUZZLE_NAMEMAP:
+        await interaction.followup.send("Improperly configured puzzle. Contact server administrator.", ephemeral=True)
 
-    
+    puzzle_type = PUZZLE_NAMEMAP[puzzle["type"]]
+    puzzle_next = puzzle["next"] # next view, or -1 if None
+    puzzle_reward = puzzle["reward"] # discord role id, or -1 if none
+    puzzle_answer = puzzle["answer"]
+
+    attach = puzzle_type(puzzle_answer, puzzle_reward, puzzle_next)
+    if isinstance(attach, discord.ui.Modal):
+        await interaction.response.send_modal(attach)
+    else:
+        await interaction.followup.send("", view=attach, ephemeral=True)
 
 
 class Trigger(discord.ui.View):
@@ -19,7 +28,7 @@ class Trigger(discord.ui.View):
     def __init__(self, database, label_text=""):
         super().__init__(timeout=None)
         but = discord.ui.Button(style=discord.ButtonStyle.green, label=label_text, custom_id="#")
-        but.callback = self.callback
+        but.callback = self.callback    
         self.add_item(but)
         self.database = database
 
@@ -30,12 +39,34 @@ class Trigger(discord.ui.View):
             await interaction.response.send_message("Improperly configured trigger. Contact server administrator.", ephemeral=True)
             return
 
+        trigger = triggers[interaction.message.id]
+        if trigger["view_id"] not in guild_db["puzzles"]:
+            await interaction.response.send_message("No puzzle found to trigger.", ephemeral=True)
+
         await interaction.response.send_message("Not impl", ephemeral=True)
-        
+
+class Puzzle():
+    def __init__(self, database, answer:str, reward, next):
+        self.database = database
+        self.answer = answer
+        self.reward = reward
+        self.next = next
+
+    async def progress(self, interaction: discord.Interaction):
+        if self.reward != -1:
+            role = interaction.guild.get_role(self.reward)
+            await interaction.user.add_roles(role)
+            await interaction.followup.send("A door slowly opens...", ephemeral=True)
+        if self.next != -1:
+            puzzles = self.database.find_one({"guild_id": interaction.guild_id})["puzzles"]
+            if self.next in puzzles:
+                await send_puzzle(interaction, self.database, self.next)
+            else:
+                await interaction.followup.send(f"Missing puzzle with id {self.next}. Contact server administrator.", ephemeral=True)
+
 # construct dict of puzzle names to classes
 PUZZLE_NAMEMAP = {}
-for name, obj in inspect.getmembers(puzzles):
-    if inspect.isclass(obj):
-        PUZZLE_NAMEMAP[name] = obj
 
+def test():
+    print(PUZZLE_NAMEMAP)
 
