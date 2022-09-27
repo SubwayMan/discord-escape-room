@@ -1,7 +1,6 @@
 import discord 
 import sys, inspect
 from helpers import Puzzle, PUZZLE_NAMEMAP, test
-
             
 
 class AnswerModal(Puzzle, discord.ui.Modal):
@@ -14,19 +13,12 @@ class AnswerModal(Puzzle, discord.ui.Modal):
             ),
             title = "Enter Answer"
         )
-        self.reward = reward
-        self.answer = answer
 
     async def callback(self, interaction: discord.Interaction):
         if self.children[0].value == self.answer:
-            try:
-                await interaction.user.add_roles(self.reward)
-                await interaction.response.send_message("A door slowly opens...", ephemeral=True)
-            except discord.Forbidden:
-                await interaction.response.send_message("Role assignment failed. Contact server administrator.", ephemeral=True)
+            await self.progress(interaction)
         else:
             await interaction.response.send_message("But nothing happened.", ephemeral=True)
-
 
 
 class GridCode(Puzzle, discord.ui.View):
@@ -36,8 +28,6 @@ class GridCode(Puzzle, discord.ui.View):
         discord.ui.View.__init__(self, timeout=None)
         self.data = [[0 for i in range(5)] for j in range(5)]
         self.buttons = [[None for i in range(5)] for j in range(5)]
-        self.answer = answer
-        self.reward = reward
 
         for i in range(5):
             for j in range(5):
@@ -61,11 +51,7 @@ class GridCode(Puzzle, discord.ui.View):
 
         await interaction.response.edit_message(view=self)
         if current_state == self.answer:
-            try:
-                await interaction.user.add_roles(self.reward)
-                await interaction.followup.send("A door slowly opens...", ephemeral=True)
-            except discord.Forbidden:
-                await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
+            await self.progress(interaction)
 
 
 
@@ -74,8 +60,6 @@ class PinCode(Puzzle, discord.ui.View):
     def __init__(self, answer:str, reward: discord.Role):
         Puzzle.__init__(self, database, answer, reward, next)
         discord.ui.View.__init__(self, timeout=None)
-        self.answer = answer
-        self.reward = reward
         self.value = ""
         self.buttons = []
         for i in range(1, 10):
@@ -84,21 +68,18 @@ class PinCode(Puzzle, discord.ui.View):
             self.add_item(self.buttons[-1])
 
     async def callback(self, interaction:discord.Interaction):
+        interaction.response.defer()
         id = interaction.custom_id
         self.value += id
-        await interaction.response.edit_message(content=" ".join(self.value + "-" * (len(self.answer) - len(self.value))), view=self)
+        await interaction.edit_original_message(content=" ".join(self.value + "-" * (len(self.answer) - len(self.value))), view=self)
         if len(self.value) == len(self.answer):
             if self.value == self.answer:
                 for but in self.buttons:
                     but.disabled = True
 
                 await interaction.edit_original_message(content=" ".join(self.value), view=self)
+                await self.progress(interaction)
 
-                try:
-                    await interaction.user.add_roles(self.reward)
-                    await interaction.followup.send("A door slowly opens...", ephemeral=True)
-                except discord.Forbidden:
-                    await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
             else:
                 await interaction.edit_original_message(content=" ".join("-" * len(self.answer)), view=self)
                 self.value = ""

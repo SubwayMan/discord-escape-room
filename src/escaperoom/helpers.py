@@ -42,8 +42,10 @@ class Trigger(discord.ui.View):
         trigger = triggers[interaction.message.id]
         if trigger["view_id"] not in guild_db["puzzles"]:
             await interaction.response.send_message("No puzzle found to trigger.", ephemeral=True)
+            return
 
-        await interaction.response.send_message("Not impl", ephemeral=True)
+        await send_puzzle(interaction, self.database, trigger["view_id"])
+
 
 class Puzzle():
     def __init__(self, database, answer:str, reward, next):
@@ -55,8 +57,12 @@ class Puzzle():
     async def progress(self, interaction: discord.Interaction):
         if self.reward != -1:
             role = interaction.guild.get_role(self.reward)
-            await interaction.user.add_roles(role)
-            await interaction.followup.send("A door slowly opens...", ephemeral=True)
+            try:
+                await interaction.user.add_roles(role)
+                await interaction.followup.send("A door slowly opens...", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.followup.send("Role assignment failed. Contact server administrator.", ephemeral=True)
+
         if self.next != -1:
             puzzles = self.database.find_one({"guild_id": interaction.guild_id})["puzzles"]
             if self.next in puzzles:
@@ -64,7 +70,8 @@ class Puzzle():
             else:
                 await interaction.followup.send(f"Missing puzzle with id {self.next}. Contact server administrator.", ephemeral=True)
 
-# construct dict of puzzle names to classes
+# Store dict of puzzle names to classes
+# This is modified after import (to resolve circular dependencies)
 PUZZLE_NAMEMAP = {}
 
 def test():
