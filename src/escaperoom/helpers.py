@@ -35,11 +35,11 @@ class Trigger(discord.ui.View):
     async def callback(self, interaction: discord.Interaction):
         guild_db = self.database.find_one({"guild_id": interaction.guild_id})
         triggers = guild_db["triggers"]
-        if interaction.message.id not in triggers:
+        if str(interaction.message.id) not in triggers:
             await interaction.response.send_message("Improperly configured trigger. Contact server administrator.", ephemeral=True)
             return
 
-        trigger = triggers[interaction.message.id]
+        trigger = triggers[str(interaction.message.id)]
         if trigger["view_id"] not in guild_db["puzzles"]:
             await interaction.response.send_message("No puzzle found to trigger.", ephemeral=True)
             return

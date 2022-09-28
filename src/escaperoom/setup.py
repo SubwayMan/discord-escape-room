@@ -4,8 +4,9 @@ from discord import SlashCommandGroup
 from discord import slash_command
 import random
 import pymongo
+
+from helpers import Trigger
 import puzzles
-from puzzles import PUZZLE_NAMEMAP
 
 
 class Setup(discord.Cog):
@@ -171,7 +172,7 @@ class Setup(discord.Cog):
     @slash_command(
         name="changeanswer", 
         description="Changes the answer for a room. Command only available for administrators.",
-        default_member_permissions=discord.Permissions(administrator=True)
+        default_member_permissions=discord.Permissions(administrator=True),
         options = [
             discord.Option(str, name="answer", description="New room answer", required=True)
         ]
@@ -205,13 +206,29 @@ class Setup(discord.Cog):
         await ctx.send_modal(MessageModal())
 
     @slash_command(
-        name="trigger", 
+        name="newtrigger", 
         description="Creates a permanent, publicly visible \"trigger\" button that allows users to enter puzzle chains.",
         default_member_permissions=discord.Permissions(administrator=True)
     )
-    async def create_trigger(self, ctx, label: discord.Option(str)):
+    async def create_trigger(self, ctx, label: discord.Option(str), puzzle: discord.Option(int)):
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
+
+        if str(puzzle) not in guild_db["puzzles"]:
+            await ctx.send_response("No puzzle found.", ephemeral=True)
+            return
+        
+    
         trigger = Trigger(self.database, label)
-        await ctx.send_response("", view=trigger)
+        msg = await ctx.channel.send("", view=trigger)
+        triggers = guild_db["triggers"]
+        trigger_id = str(msg.id)
+
+        triggers[trigger_id] = {"view_id": str(puzzle)}
+        self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"triggers": triggers}})
+        await ctx.send_response(f"Trigger successfully created, pointing to {puzzle}.", ephemeral=True)
 
 
     def check_validity(self, guild: discord.Guild) -> bool:
