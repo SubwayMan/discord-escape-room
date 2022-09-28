@@ -1,16 +1,19 @@
 import discord
 from discord.ext.commands import has_permissions 
+from discord import SlashCommandGroup
+from discord import slash_command
+import random
 import pymongo
-from helpers import *
+import puzzles
+from puzzles import PUZZLE_NAMEMAP
 
 
 class Setup(discord.Cog):
     def __init__(self, bot: discord.Bot, database: pymongo.MongoClient):
         self.bot = bot
-        self._last_member = None
         self.database = database
     
-    @discord.slash_command(
+    @slash_command(
         name="initialize",
         description="Setup the Escape Room framework. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True)
@@ -52,16 +55,17 @@ class Setup(discord.Cog):
                 {
                     "channel_id": channel.id,
                     "role_id": role1.id,
-                    "answer": "Bongobong",
                     "index": 0
                 }
 
             ],
+            "puzzles": {},
+            "triggers": {},
             "room_count": 1,
         })
         await ctx.respond("Running setup.", ephemeral=True)
 
-    @discord.slash_command(
+    @slash_command(
         name="checkhealth", 
         description="Check the integrity of the escape room. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True)
@@ -70,7 +74,7 @@ class Setup(discord.Cog):
     async def check_health(self, ctx: discord.ApplicationContext):
         await ctx.respond("Checking health.", ephemeral=True)
 
-    @discord.slash_command(
+    @slash_command(
         name="createroom", 
         description="Add a room to the escape room. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True)
@@ -81,15 +85,14 @@ class Setup(discord.Cog):
             await ctx.respond("This server does not contain a valid escape room.")
             return
 
-        guild_db = self.database
-        guild_data = guild_db.find_one({"guild_id": ctx.guild_id})
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
         bot_role = discord.utils.find(lambda r: r.is_bot_managed() and 
             r in ctx.guild.get_member(self.bot.user.id).roles,
             ctx.guild.roles)
 
-        new_role = await ctx.guild.create_role(name=f"Room-{guild_data['room_count']+1}")
-        categories = discord.utils.get(ctx.guild.categories, id=guild_data["category_id"]) 
-        new_channel = await categories.create_text_channel(f"Room-{guild_data['room_count']+1}", overwrites={
+        new_role = await ctx.guild.create_role(name=f"Room-{guild_db['room_count']+1}")
+        categories = discord.utils.get(ctx.guild.categories, id=guild_db["category_id"]) 
+        new_channel = await categories.create_text_channel(f"Room-{guild_db['room_count']+1}", overwrites={
             bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
             ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             new_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
@@ -100,55 +103,80 @@ class Setup(discord.Cog):
             {
                 "channel_id": new_channel.id,
                 "role_id": new_role.id,
-                "answer": "Bongobong",
                 "index": guild_data["room_count"]
             }
         )
 
         query = { "guild_id": guild_data["guild_id"] }
-        guild_db.update_one(query, {"$set": {"rooms": rooms} })
-        guild_db.update_one(query, {"$set": {"room_count": guild_data["room_count"]+1 } })
+        self.database.update_one(query, {"$set": {"rooms": rooms} })
+        self.database.update_one(query, {"$set": {"room_count": guild_data["room_count"]+1 } })
 
 
         await ctx.send_response("Creating room.", ephemeral=True)
 
-    @discord.slash_command(
+    @slash_command(
         name="reset", 
         description="Clears an escape room and all its components. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True)
     )
 
     async def room_purge(self, ctx: discord.ApplicationContext):
-        value = self.database.find_one({"guild_id": ctx.guild_id})
-        if not value:
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
             await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
             return
 
-        for room in value["rooms"]:
+        for room in guild_db["rooms"]:
             channel = discord.utils.get(ctx.guild.channels, id=room["channel_id"])
             await self.delete_channel(channel)
             role = discord.utils.get(ctx.guild.roles, id=room["role_id"])
             await self.delete_role(role)
 
-        role = discord.utils.get(ctx.guild.roles, id=value["role_id"])
+        role = discord.utils.get(ctx.guild.roles, id=guild_db["role_id"])
         await self.delete_role(role)
 
-        category = discord.utils.get(ctx.guild.categories, id=value["category_id"])
+        category = discord.utils.get(ctx.guild.categories, id=guild_db["category_id"])
         await self.delete_category(category)
 
         self.database.delete_one({"guild_id": ctx.guild_id})
 
         await ctx.send_response("Destroying room.", ephemeral=True)
 
-    @discord.slash_command(
+    @slash_command(
+        name="newpuzzle",
+        description="Creates a new puzzle in an escape room puzzle room.",
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    async def create_puzzle(self, ctx: discord.ApplicationContext, puzzle_type: discord.Option(str), answer: discord.Option(str)):
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
+
+        c = str(random.randrange(10**5, 10**6-1))
+        puzzles = guild_db["puzzles"]
+        while c in puzzles:
+            c = str(random.randrange(10**5, 10**6-1))
+
+        puzzles[c] = {
+            "answer": answer,
+            "reward": -1,
+            "next": -1
+        }
+
+        self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
+        await ctx.send_response(f"Puzzle of type {puzzle_type} created with id {c}.", ephemeral=True)
+
+
+    @slash_command(
         name="changeanswer", 
         description="Changes the answer for a room. Command only available for administrators.",
-        default_member_permissions=discord.Permissions(administrator=True),
+        default_member_permissions=discord.Permissions(administrator=True)
         options = [
             discord.Option(str, name="answer", description="New room answer", required=True)
         ]
     )
-    async def change_answer(self, ctx, answer: str):
+    async def change_answer(self, ctx, answer: discord.Option(str, required=True)):
         guild_query = {"guild_id": ctx.guild_id}
         guild_db = self.database.find_one(guild_query)
         if not guild_db:
@@ -167,7 +195,7 @@ class Setup(discord.Cog):
         self.database.update_one(guild_query, {"$set": {"rooms": rooms}})
         await ctx.send_response(f"Room answer successfully updated to {answer}.", ephemeral=True)
 
-    @discord.slash_command(
+    @slash_command(
         name="createmessage", 
         description="Causes the escape room controller to send a permanent message in a channel.",
         default_member_permissions=discord.Permissions(administrator=True)
@@ -176,15 +204,12 @@ class Setup(discord.Cog):
     async def new_message(self, ctx):
         await ctx.send_modal(MessageModal())
 
-    @discord.slash_command(
+    @slash_command(
         name="trigger", 
         description="Creates a permanent, publicly visible \"trigger\" button that allows users to enter puzzle chains.",
-        default_member_permissions=discord.Permissions(administrator=True),
-        options = [
-            discord.Option(str, name="label", description="Label for button", required=True)
-        ]
+        default_member_permissions=discord.Permissions(administrator=True)
     )
-    async def create_trigger(self, ctx, label: str):
+    async def create_trigger(self, ctx, label: discord.Option(str)):
         trigger = Trigger(self.database, label)
         await ctx.send_response("", view=trigger)
 
@@ -216,7 +241,7 @@ class Setup(discord.Cog):
             await category.delete()
     
 
-    @discord.slash_command(
+    @slash_command(
         name="purgeleftovers", 
         description="Command used to clean leftover roles from bot testing.",
         default_member_permissions=discord.Permissions(administrator=True)
