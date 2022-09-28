@@ -23,7 +23,7 @@ class AnswerModal(Puzzle, discord.ui.Modal):
 
 class GridCode(Puzzle, discord.ui.View):
 
-    def __init__(self, answer:str, reward: discord.Role):
+    def __init__(self, database, answer:str, reward: discord.Role, next: int):
         Puzzle.__init__(self, database, answer, reward, next)
         discord.ui.View.__init__(self, timeout=None)
         self.data = [[0 for i in range(5)] for j in range(5)]
@@ -57,7 +57,7 @@ class GridCode(Puzzle, discord.ui.View):
 
 class PinCode(Puzzle, discord.ui.View):
 
-    def __init__(self, answer:str, reward: discord.Role):
+    def __init__(self, database, answer:str, reward: discord.Role, next: int):
         Puzzle.__init__(self, database, answer, reward, next)
         discord.ui.View.__init__(self, timeout=None)
         self.value = ""
@@ -67,8 +67,8 @@ class PinCode(Puzzle, discord.ui.View):
             self.buttons[-1].callback = self.callback
             self.add_item(self.buttons[-1])
 
-    async def callback(self, interaction:discord.Interaction):
-        interaction.response.defer()
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         id = interaction.custom_id
         self.value += id
         await interaction.edit_original_message(content=" ".join(self.value + "-" * (len(self.answer) - len(self.value))), view=self)

@@ -14,7 +14,7 @@ async def send_puzzle(interaction: discord.Interaction, database, puzzle_id):
     puzzle_reward = puzzle["reward"] # discord role id, or -1 if none
     puzzle_answer = puzzle["answer"]
 
-    attach = puzzle_type(puzzle_answer, puzzle_reward, puzzle_next)
+    attach = puzzle_type(database, puzzle_answer, puzzle_reward, puzzle_next)
     if isinstance(attach, discord.ui.Modal):
         await interaction.response.send_modal(attach)
     else:
@@ -44,6 +44,7 @@ class Trigger(discord.ui.View):
             await interaction.response.send_message("No puzzle found to trigger.", ephemeral=True)
             return
 
+        await interaction.response.defer()
         await send_puzzle(interaction, self.database, trigger["view_id"])
 
 
