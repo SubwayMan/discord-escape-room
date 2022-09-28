@@ -7,6 +7,7 @@ import pymongo
 
 from helpers import Trigger
 import puzzles
+from puzzles import PUZZLE_NAMEMAP
 
 
 class Setup(discord.Cog):
@@ -154,6 +155,12 @@ class Setup(discord.Cog):
             await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
             return
 
+        if not puzzle_type in PUZZLE_NAMEMAP:
+            await ctx.send_response("Invalid puzzle type.", ephemeral=True)
+            return
+
+        #TODO: check if puzzle is created in bot-managed channel
+
         c = str(random.randrange(10**5, 10**6-1))
         puzzles = guild_db["puzzles"]
         while c in puzzles:
@@ -162,11 +169,34 @@ class Setup(discord.Cog):
         puzzles[c] = {
             "answer": answer,
             "reward": -1,
-            "next": -1
+            "next": -1,
+            "type": puzzle_type
         }
 
         self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
         await ctx.send_response(f"Puzzle of type {puzzle_type} created with id {c}.", ephemeral=True)
+
+
+    @slash_command(
+        name="deletepuzzle",
+        description="Deletes a puzzle with a specific id.",
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    async def delete_puzzle(self, ctx: discord.ApplicationContext, puzzle_id: discord.Option(int)):
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
+
+        puzzles = guild_db["puzzles"]
+        if str(puzzle_id) not in puzzles:
+            await ctx.send_response("No matching puzzle found.", ephemeral=True)
+            return
+
+        puzzles.pop(str(puzzle_id))
+        self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
+        await ctx.send_response(f"Deleted puzzle with id {puzzle_id}.", ephemeral=True)
+
 
 
     @slash_command(
