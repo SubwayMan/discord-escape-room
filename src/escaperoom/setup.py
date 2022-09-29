@@ -197,7 +197,27 @@ class Setup(discord.Cog):
         self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
         await ctx.send_response(f"Deleted puzzle with id {puzzle_id}.", ephemeral=True)
 
+    @slash_command(
+        name="link",
+        description="Links two puzzles, with puzzle2 being sent upon the completion of puzzle1.",
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    async def link_puzzle(self, ctx: discord.ApplicationContext, puzzle1: discord.Option(int), puzzle2: discord.Option(int)):
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
 
+        puzzles = guild_db["puzzles"]
+        puzzle1, puzzle2 = str(puzzle1), str(puzzle2)
+        if puzzle1 not in puzzles or puzzle2 not in puzzles:
+            await ctx.send_response("One or more invalid puzzle ids provided.", ephemeral=True)
+            return
+
+        puzzles[puzzle1]["next"] = puzzle2
+        self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
+        await ctx.send_response(f"Linked puzzle {puzzle2} to {puzzle1}.", ephemeral=True)
+        
 
     @slash_command(
         name="changeanswer", 
