@@ -100,18 +100,18 @@ class Setup(discord.Cog):
             new_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
         })
 
-        rooms = guild_data["rooms"]
+        rooms = guild_db["rooms"]
         rooms.append(
             {
                 "channel_id": new_channel.id,
                 "role_id": new_role.id,
-                "index": guild_data["room_count"]
+                "index": guild_db["room_count"]
             }
         )
 
-        query = { "guild_id": guild_data["guild_id"] }
+        query = { "guild_id": guild_db["guild_id"] }
         self.database.update_one(query, {"$set": {"rooms": rooms} })
-        self.database.update_one(query, {"$set": {"room_count": guild_data["room_count"]+1 } })
+        self.database.update_one(query, {"$set": {"room_count": guild_db["room_count"]+1 } })
 
 
         await ctx.send_response("Creating room.", ephemeral=True)
@@ -190,7 +190,7 @@ class Setup(discord.Cog):
 
         puzzles = guild_db["puzzles"]
         if str(puzzle_id) not in puzzles:
-            await ctx.send_response("No matching puzzle found.", ephemeral=True)
+            await ctx.send_response(f"No puzzle found matching {puzzle_id}.", ephemeral=True)
             return
 
         puzzles.pop(str(puzzle_id))
@@ -217,6 +217,28 @@ class Setup(discord.Cog):
         puzzles[puzzle1]["next"] = puzzle2
         self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
         await ctx.send_response(f"Linked puzzle {puzzle2} to {puzzle1}.", ephemeral=True)
+
+    
+    @slash_command(
+        name="addrole",
+        description="Adds a role reward to a specific puzzle. Use to reward the player with the role of the next room.",
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    async def link_role(self, ctx: discord.ApplicationContext, puzzle_id: discord.Option(int), role: discord.SlashCommandOptionType.role):
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
+
+        puzzles = guild_db["puzzles"]
+        puzzle_id = str(puzzle_id)
+        if puzzle_id not in puzzles:
+            await ctx.send_response(f"No puzzle found matching {puzzle_id}.", ephemeral=True)
+            return
+
+        puzzles[puzzle_id]["reward"] = role.id
+        self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
+        await ctx.send_response(f"Linked role {role} to {puzzle_id}.", ephemeral=True)
         
 
     @slash_command(
