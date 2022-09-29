@@ -223,27 +223,22 @@ class Setup(discord.Cog):
         name="changeanswer", 
         description="Changes the answer for a room. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True),
-        options = [
-            discord.Option(str, name="answer", description="New room answer", required=True)
-        ]
     )
-    async def change_answer(self, ctx, answer: discord.Option(str, required=True)):
+    async def change_answer(self, ctx, puzzle_id: discord.Option(int), answer: discord.Option(str, required=True)):
         guild_query = {"guild_id": ctx.guild_id}
         guild_db = self.database.find_one(guild_query)
         if not guild_db:
             await ctx.send_response("No escape room found in this server.", ephemeral=True)
             return
 
-        rooms = guild_db["rooms"]
-        for i in range(len(rooms)):
-            if rooms[i]["channel_id"] == ctx.channel_id:
-                rooms[i]["answer"] = answer
-                break
-        else:
-            await ctx.send_response("No room found in this channel.", ephemeral=True)
+        puzzle_id = str(puzzle_id)
+        puzzles = guild_db["puzzles"]
+        if puzzle_id not in puzzles:
+            await ctx.send_response(f"No puzzle found matching id {puzzle_id}.", ephemeral=True)
             return
 
-        self.database.update_one(guild_query, {"$set": {"rooms": rooms}})
+        puzzles[puzzle_id]["answer"] = answer
+        self.database.update_one({"guild_id": ctx.guild_id}, {"$set": {"puzzles": puzzles}})
         await ctx.send_response(f"Room answer successfully updated to {answer}.", ephemeral=True)
 
     @slash_command(
