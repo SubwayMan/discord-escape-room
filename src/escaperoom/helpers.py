@@ -18,7 +18,7 @@ async def send_puzzle(interaction: discord.Interaction, database, puzzle_id):
     if isinstance(attach, discord.ui.Modal):
         await interaction.response.send_modal(attach)
     else:
-        await interaction.followup.send("", view=attach, ephemeral=True)
+        await interaction.followup.send(str(attach), view=attach, ephemeral=True)
 
 
 class Trigger(discord.ui.View):
@@ -43,7 +43,7 @@ class Trigger(discord.ui.View):
         if trigger["view_id"] not in guild_db["puzzles"]:
             await interaction.response.send_message("No puzzle found to trigger.", ephemeral=True)
             return
-
+        
         await interaction.response.defer()
         await send_puzzle(interaction, self.database, trigger["view_id"])
 
@@ -54,6 +54,9 @@ class Puzzle():
         self.answer = answer
         self.reward = reward
         self.next = next
+
+    def __str__(self):
+        return " ".join("-" * len(self.answer))
 
     async def progress(self, interaction: discord.Interaction):
         if self.reward != -1:

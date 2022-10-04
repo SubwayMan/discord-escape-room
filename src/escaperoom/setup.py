@@ -134,7 +134,7 @@ class Setup(discord.Cog):
             role = discord.utils.get(ctx.guild.roles, id=room["role_id"])
             await self.delete_role(role)
 
-        role = discord.utils.get(ctx.guild.roles, id=guild_db["role_id"])
+        role = discord.utils.get(ctx.guild.roles, id=room["role_id"])
         await self.delete_role(role)
 
         category = discord.utils.get(ctx.guild.categories, id=guild_db["category_id"])
@@ -160,6 +160,8 @@ class Setup(discord.Cog):
             return
 
         #TODO: check if puzzle is created in bot-managed channel
+
+        #for modal management
 
         c = str(random.randrange(10**5, 10**6-1))
         puzzles = guild_db["puzzles"]
@@ -324,7 +326,7 @@ class Setup(discord.Cog):
         if category:
             await category.delete()
     
-
+ 
     @slash_command(
         name="purgeleftovers", 
         description="Command used to clean leftover roles from bot testing.",
