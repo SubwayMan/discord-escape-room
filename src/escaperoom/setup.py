@@ -68,6 +68,20 @@ class Setup(discord.Cog):
         await ctx.respond("Running setup.", ephemeral=True)
 
     @slash_command(
+        name="joingame",
+        description="Join an escape room!"
+    )
+    async def join_game(self, ctx: discord.ApplicationContext):
+        guild_db = self.database.find_one({"guild_id": ctx.guild_id})
+        if not guild_db:
+            await ctx.send_response("No escape room found associated with this server.", ephemeral=True)
+            return
+        role = ctx.guild.get_role(guild_db["rooms"][0]["role_id"])
+        await ctx.user.add_roles(role)
+        await ctx.respond("You have entered the escape room.", ephemeral=True)
+
+
+    @slash_command(
         name="checkhealth", 
         description="Check the integrity of the escape room. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True)
