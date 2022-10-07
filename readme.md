@@ -3,6 +3,7 @@
 This project is a discord bot meant to emulate "escape room" puzzles using discord's ui toolkit.
 
 ## Examples
+![Image1](./examples/example1.png)
 
 ## Setup
 Ensure you have created a mongoDB Atlas cluster with an API key, as well as a discord bot user.
