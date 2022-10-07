@@ -91,7 +91,7 @@ class Setup(discord.Cog):
         await ctx.respond("Checking health.", ephemeral=True)
 
     @slash_command(
-        name="createroom", 
+        name="newroom", 
         description="Add a room to the escape room. Command only available for administrators.",
         default_member_permissions=discord.Permissions(administrator=True)
     )
@@ -280,12 +280,12 @@ class Setup(discord.Cog):
         await ctx.send_response(f"Room answer successfully updated to {answer}.", ephemeral=True)
 
     @slash_command(
-        name="createmessage", 
+        name="newmessage", 
         description="Causes the escape room controller to send a permanent message in a channel.",
         default_member_permissions=discord.Permissions(administrator=True)
     )
 
-    async def new_message(self, ctx):
+    async def create_message(self, ctx):
         await ctx.send_modal(MessageModal())
 
     @slash_command(
