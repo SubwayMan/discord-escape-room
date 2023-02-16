@@ -32,7 +32,7 @@ class GridCode(Puzzle, discord.ui.View):
 
         for i in range(5):
             for j in range(5):
-                self.buttons[i][j] = discord.ui.Button(style=discord.ButtonStyle.green, label=" ", custom_id=f"{i},{j}")
+                self.buttons[i][j] = discord.ui.Button(style=discord.ButtonStyle.green, label="O", custom_id=f"{i},{j}")
                 self.buttons[i][j].callback = self.callback
                 self.add_item(self.buttons[i][j])
 

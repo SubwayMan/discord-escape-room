@@ -39,13 +39,13 @@ class Setup(discord.Cog):
         category = await guild.create_category("Escape Room", overwrites = {
             bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
             ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            role: discord.PermissionOverwrite(view_channel=True, send_messages=False),
+            role: discord.PermissionOverwrite(view_channel=False, send_messages=False),
         })
 
         channel = await category.create_text_channel("Room-1", overwrites = {
             bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
             ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            role1: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
+            role1: discord.PermissionOverwrite(view_channel=True, send_messages=False),
         })
 
 
@@ -111,7 +111,7 @@ class Setup(discord.Cog):
         new_channel = await categories.create_text_channel(f"Room-{guild_db['room_count']+1}", overwrites={
             bot_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
             ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            new_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, use_application_commands = True),
+            new_role: discord.PermissionOverwrite(view_channel=True, send_messages=False)
         })
 
         rooms = guild_db["rooms"]

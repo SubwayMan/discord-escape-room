@@ -25,7 +25,7 @@ class Trigger(discord.ui.View):
     """Class that provides publicly visible buttons in channels, as a means to access puzzles
     (which are ephemeral and only visible to the person who activated the trigger."""
 
-    def __init__(self, database, label_text=""):
+    def __init__(self, database, label_text=" "):
         super().__init__(timeout=None)
         but = discord.ui.Button(style=discord.ButtonStyle.green, label=label_text, custom_id="#")
         but.callback = self.callback    
